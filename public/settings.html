@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pengaturan - WhatsApp Bot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style type="text/tailwindcss">
+        body { font-family: 'Inter', sans-serif; }
+        .nav-link { @apply px-4 py-2 rounded-lg text-gray-700 hover:bg-purple-100 hover:text-purple-700 transition-colors; }
+        .nav-link.active { @apply bg-purple-600 text-white font-semibold shadow-md; }
+        .card { @apply bg-white p-6 rounded-2xl shadow-lg; }
+        .btn { @apply px-6 py-2 rounded-lg font-bold transition-colors shadow-md; }
+        .btn-primary { @apply bg-gradient-to-r from-purple-600 to-blue-500 text-white hover:opacity-90; }
+        .btn-success { @apply bg-green-500 text-white; }
+        .form-input { @apply mt-1 w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition; }
+        .form-label { @apply text-sm font-medium text-gray-600; }
+        
+        /* API Key Card Styles */
+        .api-key-card { @apply bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg border border-gray-200 hover:shadow-md transition-all cursor-pointer; }
+        .api-key-card.active { @apply bg-gradient-to-br from-green-50 to-green-100 border-green-300; }
+        .api-key-card.error { @apply bg-gradient-to-br from-red-50 to-red-100 border-red-300; }
+        .api-key-icon { @apply text-3xl mb-2; }
+        .api-key-name { @apply font-semibold text-gray-800; }
+        .api-key-status { @apply text-xs mt-2 flex items-center space-x-1; }
+        .status-badge { @apply inline-block px-2 py-1 rounded text-xs font-bold; }
+        .status-active { @apply bg-green-100 text-green-800; }
+        .status-inactive { @apply bg-gray-100 text-gray-800; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 min-h-screen">
+
+    <header class="bg-white/80 backdrop-blur-lg shadow-sm sticky top-0 z-10">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+             <div class="flex items-center space-x-2">
+                 <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 20 20" fill="currentColor"><path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 2.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
+                </div>
+                <h1 class="text-xl font-bold text-gray-800">Bot Dashboard</h1>
+            </div>
+            <div class="flex items-center space-x-2">
+                <a href="/" class="nav-link">Utama</a>
+                <a href="/scheduler.html" class="nav-link">Scheduler</a>
+                <a href="/validator.html" class="nav-link">Validator</a>
+                <a href="/calendar.html" class="nav-link">Kalender</a>
+                <a href="/settings.html" class="nav-link active">Pengaturan</a>
+                <a href="/logout" class="nav-link bg-red-100 text-red-700 hover:bg-red-200">Logout</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto p-4 sm:p-6">
+        <div id="status-message" class="hidden p-4 mb-4 text-sm rounded-lg max-w-4xl mx-auto" role="alert"></div>
+        
+        <!-- API Keys Management Section -->
+        <div class="card max-w-4xl mx-auto mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Manajemen API Keys & Tokens</h2>
+            <p class="text-sm text-gray-500 mb-6">Kelola API keys untuk berbagai layanan AI dan integrasi. Semua API key dienkripsi dan aman.</p>
+            
+            <div id="api-keys-container" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- API Keys akan di-render di sini -->
+            </div>
+
+            <!-- Modal untuk Edit/Add API Key -->
+            <div id="api-key-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white rounded-2xl shadow-xl p-8 max-w-lg w-full mx-4">
+                    <h3 id="modal-title" class="text-xl font-bold text-gray-800 mb-4"></h3>
+                    <form id="api-key-form" class="space-y-4">
+                        <div>
+                            <label for="modal-api-key" class="form-label">API Key</label>
+                            <input type="password" id="modal-api-key" class="form-input" placeholder="Masukkan API key Anda" required>
+                        </div>
+                        <div>
+                            <label class="form-label flex items-center space-x-2">
+                                <input type="checkbox" id="show-api-key" class="w-4 h-4">
+                                <span>Tampilkan API Key</span>
+                            </label>
+                        </div>
+                        <div id="modal-hint" class="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg"></div>
+                        <div id="validation-message" class="hidden text-xs p-3 rounded-lg"></div>
+                        <div class="flex space-x-3 pt-4">
+                            <button type="button" id="modal-test-btn" class="flex-1 btn btn-secondary">Coba Validasi</button>
+                            <button type="submit" id="modal-save-btn" class="flex-1 btn btn-primary">Simpan</button>
+                            <button type="button" id="modal-cancel-btn" class="flex-1 btn btn-secondary">Batal</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reminder Settings Section -->
+        <div class="card max-w-4xl mx-auto">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Pengaturan Reminder & Kalender</h2>
+            
+            <div class="space-y-6">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700">Koneksi Google Calendar</h3>
+                    <p class="text-sm text-gray-500 mt-1">Hubungkan bot dengan akun Google untuk membaca dan menulis jadwal di kalender.</p>
+                    <div class="mt-4 flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+                        <div id="status-indicator" class="w-4 h-4 rounded-full bg-gray-400 animate-pulse"></div>
+                        <span id="status-text" class="font-medium text-gray-700">Mengecek status...</span>
+                        <a href="/google-auth" id="connect-btn" class="btn btn-primary ml-auto">Hubungkan Akun Google</a>
+                    </div>
+                </div>
+
+                <div class="border-t border-gray-200"></div>
+
+                <form id="reminder-settings-form">
+                    <h3 class="text-lg font-semibold text-gray-700">Pengaturan Reminder Cuti</h3>
+                    <div class="mt-4 space-y-4">
+                        <div>
+                            <label for="reminder-time" class="form-label">Waktu Pengiriman Reminder (Setiap Hari)</label>
+                            <input type="time" id="reminder-time" class="form-input" required>
+                        </div>
+                        <div>
+                            <label for="personal-targets" class="form-label">Target Personal (pisahkan koma)</label>
+                            <input type="text" id="personal-targets" class="form-input" placeholder="0812..., 0813...">
+                        </div>
+                        <div>
+                            <label for="group-targets" class="form-label">Target Grup (tahan Ctrl/Cmd untuk memilih banyak)</label>
+                            <div class="flex items-center space-x-2">
+                                <select id="group-targets" multiple class="form-input h-32"></select>
+                                <button type="button" id="refresh-groups-btn" class="p-3 bg-gray-200 rounded-lg self-start" title="Refresh Daftar Grup">🔄</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="pt-6">
+                         <button type="submit" class="btn btn-primary w-full">Simpan Pengaturan Reminder</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // ===== API Keys Management =====
+            const apiKeysContainer = document.getElementById('api-keys-container');
+            const apiKeyModal = document.getElementById('api-key-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const apiKeyForm = document.getElementById('api-key-form');
+            const modalApiKeyInput = document.getElementById('modal-api-key');
+            const showApiKeyCheckbox = document.getElementById('show-api-key');
+            const modalHint = document.getElementById('modal-hint');
+            const validationMessage = document.getElementById('validation-message');
+            const modalTestBtn = document.getElementById('modal-test-btn');
+            const modalSaveBtn = document.getElementById('modal-save-btn');
+            const modalCancelBtn = document.getElementById('modal-cancel-btn');
+            
+            let currentProvider = null;
+
+            // Hints untuk setiap provider
+            const hints = {
+                gemini: 'Dapatkan API key dari <a href="https://aistudio.google.com/app/apikeys" target="_blank" class="text-blue-600 underline">Google AI Studio</a>',
+                google_calendar: 'Dapatkan dari Google Cloud Console > OAuth 2.0 Client ID (Desktop)',
+                custom_api: 'API key custom untuk integrasi eksternal'
+            };
+
+            const loadApiKeys = async () => {
+                try {
+                    const response = await fetch('/api/internal/api-keys', { credentials: 'include' });
+                    
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            window.location.href = '/login.html';
+                            return;
+                        }
+                        const errorData = await response.json().catch(() => ({ error: 'Gagal memproses respons' }));
+                        throw new Error(errorData.error || `HTTP ${response.status}`);
+                    }
+                    
+                    const keys = await response.json();
+                    
+                    if (!Array.isArray(keys)) {
+                        throw new Error('Format data tidak valid');
+                    }
+                    
+                    apiKeysContainer.innerHTML = '';
+                    
+                    keys.forEach(key => {
+                        const card = document.createElement('div');
+                        card.className = `api-key-card ${key.isSet ? 'active' : ''}`;
+                        card.innerHTML = `
+                            <div class="api-key-icon">${key.icon}</div>
+                            <div class="api-key-name">${key.name}</div>
+                            <div class="api-key-status">
+                                <span class="status-badge ${key.isSet ? 'status-active' : 'status-inactive'}">
+                                    ${key.isSet ? '✓ Aktif' : '✗ Belum diatur'}
+                                </span>
+                            </div>
+                            ${key.preview ? `<div class="text-xs text-gray-500 mt-2">...${key.preview}</div>` : ''}
+                        `;
+                        card.addEventListener('click', () => openModal(key.id, key.name));
+                        apiKeysContainer.appendChild(card);
+                    });
+                } catch (e) {
+                    console.error('Error loading API keys:', e);
+                    showStatus(`Gagal memuat API keys: ${e.message}`, true);
+                    apiKeysContainer.innerHTML = `<div class="col-span-full text-center py-8 text-red-600">
+                        <p>⚠️ Gagal memuat API keys</p>
+                        <p class="text-sm mt-2">${e.message}</p>
+                        <button onclick="location.reload()" class="mt-4 px-4 py-2 bg-blue-500 text-white rounded">
+                            Reload
+                        </button>
+                    </div>`;
+                }
+            };
+
+            const openModal = (provider, name) => {
+                currentProvider = provider;
+                modalTitle.textContent = `Atur ${name}`;
+                modalApiKeyInput.value = '';
+                modalApiKeyInput.type = 'password';
+                showApiKeyCheckbox.checked = false;
+                modalHint.innerHTML = hints[provider] || 'Masukkan API key Anda';
+                validationMessage.classList.add('hidden');
+                apiKeyModal.classList.remove('hidden');
+            };
+
+            showApiKeyCheckbox.addEventListener('change', () => {
+                modalApiKeyInput.type = showApiKeyCheckbox.checked ? 'text' : 'password';
+            });
+
+            modalTestBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const apiKey = modalApiKeyInput.value.trim();
+                if (!apiKey) {
+                    showValidationMessage('API key tidak boleh kosong', false);
+                    return;
+                }
+                
+                modalTestBtn.disabled = true;
+                modalTestBtn.textContent = 'Sedang validasi...';
+                
+                try {
+                    const response = await fetch(`/api/internal/api-keys/test/${currentProvider}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ apiKey }),
+                        credentials: 'include'
+                    });
+                    
+                    const res = await response.json();
+                    showValidationMessage(res.message, res.valid);
+                } catch (e) {
+                    showValidationMessage(e.message, false);
+                } finally {
+                    modalTestBtn.disabled = false;
+                    modalTestBtn.textContent = 'Coba Validasi';
+                }
+            });
+
+            apiKeyForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const apiKey = modalApiKeyInput.value.trim();
+                if (!apiKey) {
+                    showStatus('API key tidak boleh kosong', true);
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/internal/api-keys', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ provider: currentProvider, apiKey }),
+                        credentials: 'include'
+                    });
+                    
+                    const res = await response.json();
+                    
+                    if (res.success) {
+                        showStatus(res.message);
+                        apiKeyModal.classList.add('hidden');
+                        loadApiKeys();
+                    } else {
+                        showStatus(res.error, true);
+                    }
+                } catch (e) {
+                    showStatus(e.message, true);
+                }
+            });
+
+            modalCancelBtn.addEventListener('click', () => {
+                apiKeyModal.classList.add('hidden');
+            });
+
+            const showValidationMessage = (message, isValid) => {
+                validationMessage.textContent = message;
+                validationMessage.className = `text-xs p-3 rounded-lg ${isValid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`;
+                validationMessage.classList.remove('hidden');
+            };
+
+            // ===== Reminder Settings (existing code) =====
+            const statusIndicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            const connectBtn = document.getElementById('connect-btn');
+            const form = document.getElementById('reminder-settings-form');
+            const timeInput = document.getElementById('reminder-time');
+            const personalInput = document.getElementById('personal-targets');
+            const groupSelect = document.getElementById('group-targets');
+            const refreshGroupsBtn = document.getElementById('refresh-groups-btn');
+            const statusMessageEl = document.getElementById('status-message');
+
+            const showStatus = (message, isError = false) => {
+                statusMessageEl.textContent = message;
+                statusMessageEl.className = `p-4 mb-4 text-sm rounded-lg max-w-4xl mx-auto ${isError ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`;
+                statusMessageEl.style.display = 'block';
+                setTimeout(() => { statusMessageEl.style.display = 'none'; }, 5000);
+            };
+
+            const fetchData = async (url) => {
+                const response = await fetch(url, { credentials: 'include' });
+                if (!response.ok) {
+                    if (response.status === 401) window.location.href = '/login.html';
+                    const errorData = await response.json().catch(() => ({ error: 'Gagal memproses respons server.' }));
+                    throw new Error(errorData.error || 'Gagal mengambil data.');
+                }
+                return response.json();
+            };
+
+            const checkGoogleStatus = async () => {
+                try {
+                    const data = await fetchData('/api/internal/google-status');
+                    statusIndicator.classList.remove('animate-pulse');
+                    if (data.connected) {
+                        statusIndicator.className = 'w-4 h-4 rounded-full bg-green-500';
+                        statusText.textContent = 'Terhubung ke Google Calendar';
+                        connectBtn.textContent = 'Otorisasi Ulang';
+                        connectBtn.classList.remove('btn-primary');
+                        connectBtn.classList.add('btn-success');
+                    } else {
+                        statusIndicator.className = 'w-4 h-4 rounded-full bg-red-500';
+                        statusText.textContent = 'Tidak Terhubung';
+                    }
+                } catch (error) { statusText.textContent = 'Gagal mengecek status.'; }
+            };
+
+            const loadGroups = async () => {
+                groupSelect.innerHTML = '<option disabled>Memuat...</option>';
+                try {
+                    const groups = await fetchData('/api/internal/get-groups');
+                    groupSelect.innerHTML = '';
+                    groups.forEach(g => {
+                        const option = document.createElement('option');
+                        option.value = g.id;
+                        option.textContent = g.subject;
+                        groupSelect.appendChild(option);
+                    });
+                } catch (error) {
+                    groupSelect.innerHTML = '<option disabled>Gagal memuat.</option>';
+                    showStatus(error.message, true);
+                }
+            };
+            
+            const loadReminderSettings = async () => {
+                try {
+                    const settings = await fetchData('/api/internal/get-reminder-settings');
+                    const [minute, hour] = settings.schedule.split(' ');
+                    timeInput.value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+                    
+                    personalInput.value = (settings.targets.personal || []).join(', ');
+
+                    
+                    const groupIDs = settings.targets.groups || [];
+                    for (const option of groupSelect.options) {
+                        option.selected = groupIDs.includes(option.value);
+                    }
+
+                } catch (error) {
+                    showStatus('Gagal memuat pengaturan reminder.', true);
+                }
+            };
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const [hour, minute] = timeInput.value.split(':');
+                const payload = {
+                    schedule: `${minute} ${hour} * * *`,
+                    targets: {
+                        personal: personalInput.value.split(',').map(n => n.trim()).filter(n => n),
+                        groups: [...groupSelect.selectedOptions].map(opt => opt.value)
+                    }
+                };
+
+                try {
+                    const response = await fetch('/api/internal/save-reminder-settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        credentials: 'include'
+                    });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error);
+                    showStatus(result.message, false);
+                } catch (error) {
+                    showStatus(error.message, true);
+                }
+            });
+
+            refreshGroupsBtn.addEventListener('click', loadGroups);
+
+            // Inisialisasi semua
+            loadApiKeys();
+            checkGoogleStatus();
+            loadGroups().then(() => {
+                loadReminderSettings();
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scheduler - WhatsApp Bot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style type="text/tailwindcss">
+        body { font-family: 'Inter', sans-serif; }
+        .nav-link { @apply px-4 py-2 rounded-lg text-gray-700 hover:bg-purple-100 hover:text-purple-700 transition-colors; }
+        .nav-link.active { @apply bg-purple-600 text-white font-semibold shadow-md; }
+        .form-input { @apply mt-1 w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition; }
+        .form-label { @apply text-sm font-medium text-gray-600; }
+        .card { @apply bg-white p-6 rounded-2xl shadow-lg; }
+        .btn-primary { @apply w-full bg-gradient-to-r from-purple-600 to-blue-500 text-white p-3 rounded-lg font-bold hover:opacity-90 transition-opacity duration-300 shadow-md; }
+        .btn-secondary { @apply w-auto bg-gray-200 hover:bg-gray-300 text-gray-800 p-2 rounded-lg font-bold transition-colors; }
+        /* Style untuk checkbox hari */
+        .day-checkbox-label { @apply flex items-center justify-center space-x-2 border border-gray-200 rounded-lg p-3 cursor-pointer hover:bg-purple-50 hover:border-purple-300; }
+        .day-checkbox-input:checked + .day-checkbox-label { @apply bg-purple-100 border-purple-400 ring-2 ring-purple-300; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 min-h-screen">
+
+    <header class="bg-white/80 backdrop-blur-lg shadow-sm sticky top-0 z-10">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+             <div class="flex items-center space-x-2">
+                 <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 20 20" fill="currentColor"><path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 2.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
+                </div>
+                <h1 class="text-xl font-bold text-gray-800">Bot Dashboard</h1>
+            </div>
+            <div class="flex items-center space-x-2">
+                <a href="/" class="nav-link">Utama</a>
+                <a href="/scheduler.html" class="nav-link active">Scheduler</a>
+                <a href="/validator.html" class="nav-link">Validator</a>
+                <a href="/calendar.html" class="nav-link">Kalender</a>
+                <a href="/settings.html" class="nav-link">Pengaturan</a>
+                <a href="/logout" class="nav-link bg-red-100 text-red-700 hover:bg-red-200">Logout</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <form id="schedulerForm" class="lg:col-span-3 space-y-6">
+            <div id="status-message" class="hidden p-4 text-sm rounded-lg" role="alert"></div>
+
+            <div class="card">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">1. Buat Pesan</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="template-select" class="form-label">Pilih Template</label>
+                        <select id="template-select" class="form-input"></select>
+                    </div>
+                    <div>
+                        <label for="new-template-name" class="form-label">Nama Template Baru (Opsional)</label>
+                        <input type="text" id="new-template-name" placeholder="cth: Info Promo Bulanan" class="form-input">
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label for="message" class="form-label">Isi Pesan</label>
+                    <textarea id="message" rows="5" required class="form-input" placeholder="Tulis pesan Anda di sini..."></textarea>
+                </div>
+                 <div class="mt-4">
+                    <button type="button" id="save-template-btn" class="btn-secondary px-6">Simpan sebagai Template</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">2. Pilih Target</h2>
+                <div>
+                    <label for="personal-targets" class="form-label">Nomor Personal (pisahkan koma, format 08xx)</label>
+                    <input type="text" id="personal-targets" placeholder="08123456789,08987654321" class="form-input">
+                </div>
+                <div class="mt-4">
+                    <label for="group-targets" class="form-label">Grup (tahan Ctrl/Cmd untuk memilih banyak)</label>
+                    <div class="flex items-center space-x-2">
+                        <select id="group-targets" multiple class="form-input h-32"></select>
+                        <button type="button" id="refresh-groups-btn" class="p-3 bg-gray-200 rounded-lg self-start" title="Refresh Daftar Grup">🔄</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">3. Atur Jadwal</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="scheduleType" class="form-label">Tipe Jadwal</label>
+                        <select id="scheduleType" class="form-input">
+                            <option value="now">Kirim Sekarang</option>
+                            <option value="once">Sekali Kirim</option>
+                            <option value="daily">Harian</option>
+                            <option value="weekly">Mingguan</option>
+                            <option value="monthly">Bulanan</option>
+                        </select>
+                    </div>
+                    <div id="time-input-container" class="hidden">
+                        <label for="time" class="form-label">Jam Kirim</label>
+                        <input type="time" id="time" class="form-input">
+                    </div>
+                </div>
+                <div id="schedule-options" class="mt-4"></div>
+                <div class="mt-6">
+                    <button type="submit" class="btn-primary">Kirim / Jadwalkan Pesan</button>
+                </div>
+            </div>
+        </form>
+
+        <div class="lg:col-span-2 card h-fit">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Tugas Terjadwal</h2>
+            <div id="scheduled-jobs-container" class="overflow-x-auto">
+                <table class="min-w-full text-sm text-left">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="p-3 font-semibold text-gray-600">Penerima</th>
+                            <th class="p-3 font-semibold text-gray-600">Pesan</th>
+                            <th class="p-3 font-semibold text-gray-600">Detail Jadwal</th>
+                            <th class="p-3 font-semibold text-gray-600">Status</th>
+                            <th class="p-3 font-semibold text-gray-600">Run Berikutnya</th>
+                            <th class="p-3 font-semibold text-gray-600">Run Terakhir</th>
+                            <th class="p-3 font-semibold text-gray-600">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="jobs-table-body" class="divide-y divide-gray-200">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const socket = io();
+            const statusMessageEl = document.getElementById('status-message');
+            const templateSelect = document.getElementById('template-select');
+            const messageTextarea = document.getElementById('message');
+            const saveTemplateBtn = document.getElementById('save-template-btn');
+            const newTemplateNameInput = document.getElementById('new-template-name');
+            const groupSelect = document.getElementById('group-targets');
+            const refreshGroupsBtn = document.getElementById('refresh-groups-btn');
+            const schedulerForm = document.getElementById('schedulerForm');
+            const scheduleTypeSelect = document.getElementById('scheduleType');
+            const scheduleOptionsContainer = document.getElementById('schedule-options');
+            const timeInputContainer = document.getElementById('time-input-container');
+            const jobsTableBody = document.getElementById('jobs-table-body');
+            let templates = [];
+
+            const showStatus = (message, isError = false) => {
+                statusMessageEl.textContent = message;
+                statusMessageEl.className = `p-4 mb-4 text-sm rounded-lg ${isError ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`;
+                statusMessageEl.style.display = 'block';
+                setTimeout(() => { statusMessageEl.style.display = 'none'; }, 5000);
+            };
+
+            const fetchData = async (url) => {
+                const response = await fetch(url, { credentials: 'include' });
+                if (!response.ok) {
+                    if (response.status === 401) window.location.href = '/login.html';
+                    const errorData = await response.json().catch(() => ({ error: 'Gagal memproses respons server.' }));
+                    throw new Error(errorData.error || 'Gagal mengambil data.');
+                }
+                return response.json();
+            };
+
+            const postAction = async (url, actionName) => {
+                try {
+                    const response = await fetch(url, { method: 'POST', credentials: 'include' });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error);
+                    showStatus(`Tugas berhasil ${actionName}.`, false);
+                    // Refresh data akan ditangani oleh event socket 'schedule_updated'
+                } catch (error) { 
+                    showStatus(error.message, true); 
+                }
+            };
+
+            const loadTemplates = async () => {
+                try {
+                    templates = await fetchData('/api/internal/get-templates');
+                    templateSelect.innerHTML = '<option value="">-- Pilih Template --</option>';
+                    templates.forEach(t => {
+                        const option = document.createElement('option');
+                        option.value = t.name;
+                        option.textContent = t.name;
+                        templateSelect.appendChild(option);
+                    });
+                } catch (error) { showStatus(error.message, true); }
+            };
+
+            const loadGroups = async () => {
+                groupSelect.innerHTML = '<option disabled>Memuat grup...</option>';
+                try {
+                    const groups = await fetchData('/api/internal/get-groups');
+                    groupSelect.innerHTML = '';
+                    if (groups.length > 0) {
+                        groups.forEach(g => {
+                            const option = document.createElement('option');
+                            option.value = g.id;
+                            option.textContent = g.subject;
+                            groupSelect.appendChild(option);
+                        });
+                    } else {
+                        groupSelect.innerHTML = '<option disabled>Tidak ada grup.</option>';
+                    }
+                } catch (error) {
+                    groupSelect.innerHTML = '<option disabled>Gagal memuat.</option>';
+                    showStatus(error.message, true);
+                }
+            };
+
+            // =================================================================
+            //          FUNGSI INI DIUBAH TOTAL
+            // =================================================================
+            const loadScheduledJobs = async () => {
+                try {
+                    const jobs = await fetchData('/api/internal/get-scheduled-jobs');
+                    jobsTableBody.innerHTML = '';
+                    if (jobs.length === 0) {
+                        jobsTableBody.innerHTML = '<tr><td colspan="7" class="p-4 text-center text-gray-500">Tidak ada tugas terjadwal.</td></tr>';
+                        return;
+                    }
+                    jobs.forEach(job => {
+                        const row = document.createElement('tr');
+                        row.className = "hover:bg-gray-50";
+
+                        // 1. Penerima (Data Baru)
+                        const recipient = job.recipientString || 'N/A';
+                        
+                        // 2. Pesan
+                        const messageDisplay = job.templateName ? `<i>${job.templateName}</i>` : `"${job.message.substring(0, 20)}..."`;
+
+                        // 3. Detail Jadwal (Data Baru)
+                        const schedule = job.scheduleString || 'N/A';
+
+                        // 4. Status (Data Baru)
+                        const statusClass = job.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+                        const statusText = job.status === 'Active' ? 'Aktif' : 'Dijeda';
+                        const statusBadge = `<span class="px-2 py-1 text-xs font-semibold rounded-full ${statusClass}">${statusText}</span>`;
+
+                        // 5. Run Berikutnya (Data Baru)
+                        let nextRunText = '-';
+                        if (job.nextRun === 'Dijeda') {
+                            nextRunText = 'Dijeda';
+                        } else if (job.nextRun) {
+                            try {
+                                nextRunText = new Date(job.nextRun).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+                            } catch (e) { nextRunText = 'Invalid Date'; }
+                        }
+
+                        // 6. Run Terakhir (Data Baru)
+                        let lastRunText = 'Belum berjalan';
+                        if (job.lastRun) {
+                            const lastRunTime = new Date(job.lastRun.time).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit' });
+                            const lastRunStatus = job.lastRun.status === 'Sukses' ? '✅' : '❌ Gagal';
+                            lastRunText = `${lastRunStatus} (${lastRunTime})`;
+                        }
+
+                        // 7. Aksi (Logika Baru)
+                        let actionButtons = `<button data-id="${job.id}" class="cancel-job-btn text-xs text-red-600 hover:underline">Batalkan</button>`;
+                        if (job.status === 'Active') {
+                            actionButtons += ` | <button data-id="${job.id}" class="pause-job-btn text-xs text-yellow-600 hover:underline">Jeda</button>`;
+                        } else if (job.status === 'Paused') {
+                            actionButtons += ` | <button data-id="${job.id}" class="resume-job-btn text-xs text-green-600 hover:underline">Lanjutkan</button>`;
+                        }
+                        
+                        // Render baris tabel
+                        row.innerHTML = `
+                            <td class="p-3 text-xs">${recipient}</td>
+                            <td class="p-3 text-xs">${messageDisplay}</td>
+                            <td class="p-3 text-xs">${schedule}</td>
+                            <td class="p-3">${statusBadge}</td>
+                            <td class="p-3 text-xs font-mono">${nextRunText}</td>
+                            <td class="p-3 text-xs">${lastRunText}</td>
+                            <td class="p-3 text-xs whitespace-nowrap">${actionButtons}</td>
+                        `;
+                        jobsTableBody.appendChild(row);
+                    });
+                } catch (error) {
+                    jobsTableBody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-500">${error.message}</td></tr>`;
+                }
+            };
+            // =================================================================
+            //          AKHIR DARI FUNGSI YANG DIUBAH
+            // =================================================================
+
+
+            const updateScheduleOptions = () => {
+                const type = scheduleTypeSelect.value;
+                scheduleOptionsContainer.innerHTML = '';
+                timeInputContainer.style.display = 'none';
+
+                if (type === 'once') {
+                    timeInputContainer.style.display = 'block';
+                    scheduleOptionsContainer.innerHTML = `<div><label for="date" class="form-label">Tanggal Kirim</label><input type="date" id="date" class="form-input" required></div>`;
+                } else if (type === 'daily') {
+                    timeInputContainer.style.display = 'block';
+                } else if (type === 'weekly') {
+                    timeInputContainer.style.display = 'block';
+                    scheduleOptionsContainer.innerHTML = `
+                        <div>
+                            <label class="form-label">Pilih Hari (bisa lebih dari satu)</label>
+                            <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 mt-2">
+                                ${['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].map((day, index) => `
+                                    <div>
+                                        <input type="checkbox" id="day-${index}" name="days" value="${index}" class="hidden day-checkbox-input">
+                                        <label for="day-${index}" class="day-checkbox-label">
+                                            <span class="text-sm font-medium text-gray-700">${day}</span>
+                                        </label>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>`;
+                } else if (type === 'monthly') {
+                    timeInputContainer.style.display = 'block';
+                    scheduleOptionsContainer.innerHTML = `<div><label for="date" class="form-label">Pilih Tanggal</label><input type="number" id="date" min="1" max="31" class="form-input" required></div>`;
+                }
+            };
+
+            templateSelect.addEventListener('change', () => {
+                const selectedTemplate = templates.find(t => t.name === templateSelect.value);
+                if (selectedTemplate) messageTextarea.value = selectedTemplate.message;
+            });
+
+            saveTemplateBtn.addEventListener('click', async () => {
+                const name = newTemplateNameInput.value.trim();
+                const message = messageTextarea.value.trim();
+                if (!name || !message) { showStatus('Nama template baru dan isi pesan tidak boleh kosong.', true); return; }
+                try {
+                    const response = await fetch('/api/internal/save-template', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, message }), credentials: 'include' });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error);
+                    showStatus('Template berhasil disimpan!', false);
+                    newTemplateNameInput.value = '';
+                } catch (error) { showStatus(error.message, true); }
+            });
+
+            refreshGroupsBtn.addEventListener('click', loadGroups);
+            scheduleTypeSelect.addEventListener('change', updateScheduleOptions);
+
+            schedulerForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const scheduleType = scheduleTypeSelect.value;
+                const scheduleData = {};
+                if (scheduleType !== 'now') {
+                    scheduleData.time = document.getElementById('time').value;
+                    if (!scheduleData.time) { showStatus('Jam kirim harus diisi.', true); return; }
+                }
+                if (scheduleType === 'once' || scheduleType === 'monthly') scheduleData.date = document.getElementById('date')?.value;
+                if (scheduleType === 'weekly') {
+                    scheduleData.days = Array.from(document.querySelectorAll('input[name="days"]:checked')).map(cb => cb.value);
+                    if (scheduleData.days.length === 0) { showStatus('Pilih minimal satu hari untuk jadwal mingguan.', true); return; }
+                }
+
+                const payload = {
+                    targets: document.getElementById('personal-targets').value.split(',').map(n => n.trim()).filter(n => n),
+                    groups: [...groupSelect.selectedOptions].map(opt => opt.value),
+                    message: messageTextarea.value,
+                    templateName: templateSelect.value || null,
+                    scheduleType,
+                    scheduleData
+                };
+
+                if (payload.targets.length === 0 && payload.groups.length === 0) { showStatus('Pilih setidaknya satu target.', true); return; }
+
+                try {
+                    const response = await fetch('/api/internal/schedule-message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), credentials: 'include' });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error);
+                    showStatus(result.message, false);
+                    schedulerForm.reset();
+                    updateScheduleOptions();
+                } catch (error) { showStatus(error.message, true); }
+            });
+
+            // =================================================================
+            //          EVENT LISTENER INI DIUBAH
+            // =================================================================
+            jobsTableBody.addEventListener('click', async (e) => {
+                const btn = e.target;
+                const id = btn.dataset.id;
+                if (!id) return; // Klik di luar tombol
+
+                if (btn.classList.contains('cancel-job-btn')) {
+                    if (confirm(`Anda yakin ingin membatalkan tugas ini?`)) {
+                        await postAction(`/api/internal/cancel-job/${id}`, 'dibatalkan');
+                    }
+                } else if (btn.classList.contains('pause-job-btn')) {
+                    if (confirm(`Anda yakin ingin menjeda tugas ini?`)) {
+                        await postAction(`/api/internal/pause-job/${id}`, 'dijeda');
+                    }
+                } else if (btn.classList.contains('resume-job-btn')) {
+                    if (confirm(`Anda yakin ingin melanjutkan tugas ini?`)) {
+                        await postAction(`/api/internal/resume-job/${id}`, 'dilanjutkan');
+                    }
+                }
+            });
+            // =================================================================
+            //          AKHIR DARI EVENT LISTENER YANG DIUBAH
+            // =================================================================
+
+
+            socket.on('connect', () => {
+                console.log('Socket.IO terhubung!');
+                loadTemplates();
+                loadGroups();
+                loadScheduledJobs();
+            });
+            socket.on('templates_updated', loadTemplates);
+            socket.on('schedule_updated', loadScheduledJobs);
+            updateScheduleOptions();
+        });
+    </script>
+</body>
+</html>

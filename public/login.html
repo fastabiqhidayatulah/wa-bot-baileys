@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - WhatsApp Bot Dashboard</title>
+    <!-- Memuat Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Memuat Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* Menggunakan font Inter sebagai default */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100">
+
+    <!-- Kontainer Utama untuk menengahkan kartu login -->
+    <div class="min-h-screen flex items-center justify-center p-4">
+        
+        <!-- Kartu Login -->
+        <div class="bg-white w-full max-w-sm p-8 rounded-2xl shadow-lg">
+            
+            <!-- Header Kartu: Ikon dan Judul -->
+            <div class="flex flex-col items-center mb-6">
+                <!-- Ikon Lingkaran dengan Gradien -->
+                <div class="w-20 h-20 rounded-full bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center mb-4 shadow-md">
+                    <!-- Ikon Chat Bubble (SVG) -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-white" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M18 5v8a2 2 0 01-2 2h-5l-5 4v-4H4a2 2 0 01-2-2V5a2 2 0 012-2h12a2 2 0 012 2zM7 8H5v2h2V8zm2 0h2v2H9V8zm6 0h-2v2h2V8z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800">WhatsApp Bot</h1>
+                <p class="text-gray-500">Dashboard Login</p>
+            </div>
+
+            <!-- Form Login -->
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label for="username" class="text-sm font-medium text-gray-600">Username</label>
+                    <input type="text" id="username" name="username" placeholder="Masukkan username" required
+                           class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition">
+                </div>
+                <div>
+                    <label for="password" class="text-sm font-medium text-gray-600">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Masukkan password" required
+                           class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition">
+                </div>
+                
+                <!-- Pesan Error (akan muncul jika login gagal) -->
+                <p id="error-message" class="text-red-500 text-sm text-center"></p>
+
+                <div>
+                    <button type="submit" 
+                            class="w-full bg-gradient-to-r from-purple-600 to-blue-500 text-white p-3 rounded-lg font-bold hover:opacity-90 transition-opacity duration-300 shadow-md mt-2">
+                        Login
+                    </button>
+                </div>
+            </form>
+
+            <!-- Footer Kartu: Info Kredensial Default -->
+            <div class="text-center mt-6">
+                <p class="text-sm text-gray-400">Default Credentials:</p>
+                <p class="text-sm text-gray-500 font-medium">admin / password123</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Logika JavaScript untuk menangani submit form
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault(); // Mencegah form dari refresh halaman
+            
+            const username = e.target.username.value;
+            const password = e.target.password.value;
+            const errorMessageEl = document.getElementById('error-message');
+            
+            errorMessageEl.textContent = ''; // Bersihkan pesan error sebelumnya
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (response.ok) {
+                    // Jika login berhasil (status 200-299), arahkan ke halaman utama
+                    window.location.href = '/';
+                } else {
+                    // Jika gagal, tampilkan pesan error dari server
+                    const data = await response.json();
+                    errorMessageEl.textContent = data.message || 'Terjadi kesalahan.';
+                }
+            } catch (error) {
+                // Jika terjadi error pada koneksi fetch
+                errorMessageEl.textContent = 'Tidak dapat terhubung ke server.';
+                console.error('Login error:', error);
+            }
+        });
+    </script>
+
+</body>
+</html>

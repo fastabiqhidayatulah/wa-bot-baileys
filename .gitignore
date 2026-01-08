@@ -1,0 +1,49 @@
+# Environment variables (jangan expose API keys, credentials)
+.env
+.env.local
+.env.*.local
+
+# Node modules (terlalu besar & bisa di-install dengan npm install)
+node_modules/
+node_modules
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# WhatsApp Authentication (sensitive data - JANGAN UPLOAD!)
+auth_info_baileys/
+
+# Sensitive data files
+api_keys.json
+google_token.json
+users.json
+
+# Optional: ignore data files (kalau mau tetap)
+# schedules.json
+# templates.json
+# reminder_settings.json
+# (uncomment jika ingin ignore data files juga)
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.suo
+*.sln.iml
+
+# Build files
+dist/
+build/
+
+# PM2 files (optional)
+.pm2/

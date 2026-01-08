@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validator Nomor - WhatsApp Bot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style type="text/tailwindcss">
+        body { font-family: 'Inter', sans-serif; }
+        .nav-link { @apply px-4 py-2 rounded-lg text-gray-700 hover:bg-purple-100 hover:text-purple-700 transition-colors; }
+        .nav-link.active { @apply bg-purple-600 text-white font-semibold shadow-md; }
+        .card { @apply bg-white p-6 rounded-2xl shadow-lg; }
+        .btn-primary { @apply w-full bg-gradient-to-r from-purple-600 to-blue-500 text-white p-3 rounded-lg font-bold hover:opacity-90 transition-opacity duration-300 shadow-md; }
+        .btn-secondary { @apply w-full bg-gray-200 hover:bg-gray-300 text-gray-800 p-2 rounded-lg font-bold transition-colors; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 min-h-screen">
+
+    <!-- Header / Navbar -->
+    <header class="bg-white/80 backdrop-blur-lg shadow-sm sticky top-0 z-10">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+             <div class="flex items-center space-x-2">
+                 <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 20 20" fill="currentColor"><path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 2.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
+                </div>
+                <h1 class="text-xl font-bold text-gray-800">Bot Dashboard</h1>
+            </div>
+            <div class="flex items-center space-x-2">
+                <a href="/" class="nav-link">Utama</a>
+                <a href="/scheduler.html" class="nav-link">Scheduler</a>
+                <a href="/validator.html" class="nav-link active">Validator</a>
+                <a href="/calendar.html" class="nav-link">Kalender</a>
+                <a href="/settings.html" class="nav-link">Pengaturan</a>
+                <a href="/logout" class="nav-link bg-red-100 text-red-700 hover:bg-red-200">Logout</a>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Konten Utama -->
+    <main class="container mx-auto p-4 sm:p-6">
+        <div class="card max-w-4xl mx-auto">
+            <h2 class="text-2xl font-bold text-gray-800 mb-1">Validator Nomor WhatsApp</h2>
+            <p class="text-gray-500 mb-6">Tempel daftar nomor telepon (satu per baris) untuk memeriksa ketersediaannya di WhatsApp.</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Kolom Input -->
+                <div>
+                    <form id="validatorForm">
+                        <label for="number-list" class="text-sm font-medium text-gray-600">Daftar Nomor</label>
+                        <textarea id="number-list" rows="10" class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition" placeholder="081234567890&#10;089876543210&#10;..."></textarea>
+                        <button type="submit" id="start-check-btn" class="btn-primary mt-4">Mulai Pengecekan</button>
+                    </form>
+                </div>
+
+                <!-- Kolom Hasil -->
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800 mb-2">Hasil Pengecekan</h3>
+                    <div id="progress-container" class="hidden my-2">
+                        <p id="progress-text" class="text-sm text-gray-600 mb-1">Memeriksa...</p>
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div id="progress-bar" class="bg-purple-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div id="results-container" class="mt-4 max-h-80 overflow-y-auto space-y-2 pr-2">
+                        <p class="text-gray-500 text-center py-4">Hasil akan ditampilkan di sini.</p>
+                    </div>
+                    <!-- Tombol Download & Salin -->
+                    <div id="action-buttons" class="hidden mt-4 space-y-2">
+                        <button id="download-btn" class="btn-secondary w-full">Download Nomor Aktif (.txt)</button>
+                        <button id="copy-btn" class="btn-secondary w-full">Salin Nomor Aktif</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const socket = io();
+            const validatorForm = document.getElementById('validatorForm');
+            const numberListEl = document.getElementById('number-list');
+            const resultsContainer = document.getElementById('results-container');
+            const startBtn = document.getElementById('start-check-btn');
+            const progressContainer = document.getElementById('progress-container');
+            const progressText = document.getElementById('progress-text');
+            const progressBar = document.getElementById('progress-bar');
+            const actionButtons = document.getElementById('action-buttons');
+            const downloadBtn = document.getElementById('download-btn');
+            const copyBtn = document.getElementById('copy-btn');
+
+            let validationResults = []; // Menyimpan semua hasil validasi
+
+            validatorForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const numbers = numberListEl.value.split('\n').map(n => n.trim()).filter(n => n);
+                if (numbers.length === 0) {
+                    alert('Silakan masukkan setidaknya satu nomor telepon.');
+                    return;
+                }
+
+                startBtn.disabled = true;
+                startBtn.textContent = 'Memeriksa...';
+                resultsContainer.innerHTML = '';
+                validationResults = []; // Reset hasil
+                actionButtons.classList.add('hidden'); // Sembunyikan tombol
+                progressContainer.classList.remove('hidden');
+                progressText.textContent = 'Mempersiapkan...';
+                progressBar.style.width = '0%';
+                
+                socket.emit('validate-numbers', { numbers });
+            });
+
+            socket.on('validation-progress', (data) => {
+                const percentage = (data.checked / data.total) * 100;
+                progressBar.style.width = `${percentage}%`;
+                progressText.textContent = `Memeriksa ${data.checked} dari ${data.total}...`;
+            });
+
+            socket.on('validation-update', (result) => {
+                validationResults.push(result); // Simpan hasil
+                const statusClass = result.status === 'Aktif' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+                const resultEl = document.createElement('div');
+                resultEl.className = 'flex justify-between items-center bg-gray-50 p-2 rounded-lg animate-pulse';
+                resultEl.innerHTML = `
+                    <span class="font-mono text-gray-700">${result.number}</span>
+                    <span class="text-xs font-bold px-2 py-1 rounded-full ${statusClass}">${result.status}</span>
+                `;
+                resultsContainer.prepend(resultEl);
+                setTimeout(() => resultEl.classList.remove('animate-pulse'), 500);
+            });
+
+            socket.on('validation-complete', () => {
+                startBtn.disabled = false;
+                startBtn.textContent = 'Mulai Pengecekan';
+                progressText.textContent = 'Selesai!';
+                actionButtons.classList.remove('hidden'); // Tampilkan tombol aksi
+            });
+            
+            socket.on('validation-error', (data) => {
+                startBtn.disabled = false;
+                startBtn.textContent = 'Mulai Pengecekan';
+                progressContainer.classList.add('hidden');
+                alert(`Error: ${data.message}`);
+            });
+
+            downloadBtn.addEventListener('click', () => {
+                const activeNumbers = validationResults
+                    .filter(res => res.status === 'Aktif')
+                    .map(res => res.number)
+                    .join('\n');
+
+                if (activeNumbers.length === 0) {
+                    alert('Tidak ada nomor aktif untuk diunduh.');
+                    return;
+                }
+
+                const blob = new Blob([activeNumbers], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'nomor_aktif.txt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+
+            copyBtn.addEventListener('click', () => {
+                const activeNumbers = validationResults
+                    .filter(res => res.status === 'Aktif')
+                    .map(res => res.number)
+                    .join('\n');
+
+                if (activeNumbers.length === 0) {
+                    alert('Tidak ada nomor aktif untuk disalin.');
+                    return;
+                }
+
+                const textarea = document.createElement('textarea');
+                textarea.value = activeNumbers;
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    alert('Nomor aktif berhasil disalin ke clipboard!');
+                } catch (err) {
+                    alert('Gagal menyalin. Coba lagi secara manual.');
+                }
+                document.body.removeChild(textarea);
+            });
+        });
+    </script>
+</body>
+</html>
