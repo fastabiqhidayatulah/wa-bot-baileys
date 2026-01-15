@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dokumentasi API - WhatsApp Bot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css" rel="stylesheet">
+    <style type="text/tailwindcss">
+        body { font-family: 'Inter', sans-serif; }
+        .nav-link { @apply px-4 py-2 rounded-lg text-gray-700 hover:bg-purple-100 hover:text-purple-700 transition-colors; }
+        .nav-link.active { @apply bg-purple-600 text-white font-semibold shadow-md; }
+        .card { @apply bg-white p-6 rounded-2xl shadow-lg; }
+        .code-block { @apply bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto font-mono text-sm; }
+        .endpoint { @apply border-l-4 border-purple-600 pl-4 py-2 my-3; }
+        .method-get { @apply text-blue-600 font-bold; }
+        .method-post { @apply text-green-600 font-bold; }
+        .method-delete { @apply text-red-600 font-bold; }
+        .tab-content { @apply hidden; }
+        .tab-content.active { @apply block; }
+        .tab-btn { @apply px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 transition cursor-pointer; }
+        .tab-btn.active { @apply bg-purple-600 text-white; }
+        h3 { @apply text-lg font-bold text-gray-800 mt-6 mb-3; }
+        h4 { @apply text-base font-semibold text-gray-700 mt-4 mb-2; }
+        p { @apply text-gray-700 mb-3; }
+        ul { @apply list-disc list-inside text-gray-700 mb-3; }
+        a { @apply text-purple-600 hover:text-purple-800 underline; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 min-h-screen">
+
+    <header class="bg-white/80 backdrop-blur-lg shadow-sm sticky top-0 z-10">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 20 20" fill="currentColor"><path d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 2.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" /></svg>
+                </div>
+                <h1 class="text-xl font-bold text-gray-800">Bot Dashboard</h1>
+            </div>
+            <div class="flex items-center space-x-2">
+                <a href="/" class="nav-link">Utama</a>
+                <a href="/scheduler.html" class="nav-link">Scheduler</a>
+                <a href="/validator.html" class="nav-link">Validator</a>
+                <a href="/docs.html" class="nav-link active">📚 Docs</a>
+                <a href="/settings.html" class="nav-link">Pengaturan</a>
+                <a href="/logout" class="nav-link bg-red-100 text-red-700 hover:bg-red-200">Logout</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto p-4 sm:p-6 max-w-6xl">
+        <!-- TOC -->
+        <div class="card mb-6">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">📚 Dokumentasi API</h2>
+            <p class="text-gray-600 mb-4">Panduan lengkap menggunakan API WhatsApp Bot. Semua endpoint dilindungi dengan X-API-Key header.</p>
+            
+            <div class="flex flex-wrap gap-2">
+                <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+                <button class="tab-btn" onclick="switchTab('auth')">Autentikasi</button>
+                <button class="tab-btn" onclick="switchTab('message')">Message API</button>
+                <button class="tab-btn" onclick="switchTab('attachment')">Attachment API</button>
+                <button class="tab-btn" onclick="switchTab('scheduler')">Scheduler API</button>
+                <button class="tab-btn" onclick="switchTab('validator')">Validator API</button>
+                <button class="tab-btn" onclick="switchTab('examples')">Contoh</button>
+            </div>
+        </div>
+
+        <!-- Overview -->
+        <div id="overview" class="tab-content active space-y-4">
+            <div class="card">
+                <h3>Quick Start</h3>
+                <p>Gunakan curl atau library HTTP client untuk akses API:</p>
+                <div class="code-block">
+curl -X POST http://192.168.10.20:8000/api/external/send-message \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target": "62812345678@s.whatsapp.net",
+    "message": "Halo dari bot!"
+  }'
+                </div>
+                <h4 class="mt-4">Base URL</h4>
+                <p><code class="bg-gray-200 px-2 py-1 rounded">http://192.168.10.20:8000</code></p>
+                <h4>Format Target</h4>
+                <ul>
+                    <li><strong>Personal:</strong> <code class="bg-gray-200 px-2 py-1 rounded">628xxxxxxxxx@s.whatsapp.net</code></li>
+                    <li><strong>Group:</strong> <code class="bg-gray-200 px-2 py-1 rounded">120363048xxxxx@g.us</code></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Autentikasi -->
+        <div id="auth" class="tab-content space-y-4">
+            <div class="card">
+                <h3>Autentikasi</h3>
+                <p>Semua API endpoint memerlukan header <code class="bg-gray-200 px-2 py-1 rounded">X-API-Key</code></p>
+                
+                <h4>Cara Mendapatkan API Key</h4>
+                <ol class="list-decimal list-inside text-gray-700 mb-3">
+                    <li>Login ke dashboard</li>
+                    <li>Buka halaman <strong>Pengaturan</strong></li>
+                    <li>Buat API key baru untuk provider yang diinginkan</li>
+                    <li>Copy API key dan gunakan di setiap request</li>
+                </ol>
+
+                <h4>Header Format</h4>
+                <div class="code-block">
+X-API-Key: YOUR_API_KEY_HERE
+Content-Type: application/json
+                </div>
+
+                <h4>Error Autentikasi</h4>
+                <p>Jika API key invalid, akan dapat respons:</p>
+                <div class="code-block">
+{
+  "error": "Unauthorized",
+  "message": "API key tidak valid atau expired"
+}
+                </div>
+            </div>
+        </div>
+
+        <!-- Message API -->
+        <div id="message" class="tab-content space-y-4">
+            <div class="card">
+                <h3>📤 Send Message</h3>
+                <div class="endpoint">
+                    <span class="method-post">POST</span> /api/external/send-message
+                </div>
+                
+                <h4>Parameters</h4>
+                <div class="code-block">
+{
+  "target": "62812345678@s.whatsapp.net",  // Required: JID atau nomor
+  "message": "Pesan Anda di sini",         // Required: Text message
+  "caption": "Caption (optional)"           // Optional: Untuk media
+}
+                </div>
+
+                <h4>Response Success</h4>
+                <div class="code-block">
+{
+  "success": true,
+  "message": "Pesan berhasil dikirim",
+  "messageId": "3EB0xxxxxx"
+}
+                </div>
+
+                <h4>Contoh</h4>
+                <div class="code-block">
+curl -X POST http://192.168.10.20:8000/api/external/send-message \
+  -H "X-API-Key: abc123xyz" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target": "62812345678@s.whatsapp.net",
+    "message": "Halo! Ini test dari bot"
+  }'
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>📢 Broadcast Message</h3>
+                <div class="endpoint">
+                    <span class="method-post">POST</span> /api/external/broadcast
+                </div>
+                
+                <h4>Parameters</h4>
+                <div class="code-block">
+{
+  "targetType": "numbers",              // "numbers" atau "group"
+  "targets": ["62812345678", "6287654321"],
+  "message": "Pesan ke banyak orang"
+}
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>⏰ Schedule Broadcast</h3>
+                <div class="endpoint">
+                    <span class="method-post">POST</span> /api/external/schedule-broadcast
+                </div>
+                
+                <h4>Parameters</h4>
+                <div class="code-block">
+{
+  "jobName": "daily_reminder",
+  "message": "Reminder harian",
+  "cronExpression": "0 9 * * *",        // 9 AM setiap hari
+  "targetType": "numbers",
+  "targets": ["62812345678"]
+}
+                </div>
+
+                <h4>Cron Expression</h4>
+                <ul>
+                    <li><code class="bg-gray-200 px-2 py-1 rounded">0 9 * * *</code> - 9:00 AM setiap hari</li>
+                    <li><code class="bg-gray-200 px-2 py-1 rounded">0 */4 * * *</code> - Setiap 4 jam</li>
+                    <li><code class="bg-gray-200 px-2 py-1 rounded">0 10 * * 1-5</code> - 10 AM weekday</li>
+                    <li><code class="bg-gray-200 px-2 py-1 rounded">0 0 1 * *</code> - 1 Januari setiap tahun</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Attachment API -->
+        <div id="attachment" class="tab-content space-y-4">
+            <div class="card">
+                <h3>📎 Upload Attachment</h3>
+                <div class="endpoint">
+                    <span class="method-post">POST</span> /api/external/upload-attachment
+                </div>
+                
+                <h4>Parameters</h4>
+                <p>Gunakan multipart/form-data dengan field "file"</p>
+                <div class="code-block">
+curl -X POST http://192.168.10.20:8000/api/external/upload-attachment \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -F "file=@/path/to/file.pdf"
+                </div>
+
+                <h4>File Types Supported</h4>
+                <ul>
+                    <li><strong>Images:</strong> JPG, PNG, GIF</li>
+                    <li><strong>Videos:</strong> MP4, AVI, MOV, MKV</li>
+                    <li><strong>Audio:</strong> MP3, WAV, AAC, M4A</li>
+                    <li><strong>Documents:</strong> PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX</li>
+                    <li><strong>Archives:</strong> ZIP, RAR</li>
+                </ul>
+                <p class="text-sm text-orange-600">Max file size: 50MB</p>
+            </div>
+
+            <div class="card">
+                <h3>📋 List Attachments</h3>
+                <div class="endpoint">
+                    <span class="method-get">GET</span> /api/external/attachments
+                </div>
+                
+                <h4>Response</h4>
+                <div class="code-block">
+{
+  "success": true,
+  "files": [
+    {
+      "filename": "report.pdf",
+      "size": 245625,
+      "uploaded": "2026-01-14T12:30:00Z"
+    }
+  ]
+}
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>🚀 Send Attachment</h3>
+                <div class="endpoint">
+                    <span class="method-post">POST</span> /api/external/send-attachment
+                </div>
+                
+                <h4>Parameters</h4>
+                <div class="code-block">
+{
+  "target": "62812345678@s.whatsapp.net",
+  "filename": "report.pdf",
+  "caption": "Laporan bulanan"
+}
+                </div>
+
+                <h4>Contoh</h4>
+                <div class="code-block">
+# 1. Upload file
+curl -X POST http://192.168.10.20:8000/api/external/upload-attachment \
+  -H "X-API-Key: abc123" \
+  -F "file=@report.pdf"
+
+# 2. Send ke WhatsApp
+curl -X POST http://192.168.10.20:8000/api/external/send-attachment \
+  -H "X-API-Key: abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target": "62812345678@s.whatsapp.net",
+    "filename": "report.pdf",
+    "caption": "Laporan Januari 2026"
+  }'
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>🗑️ Delete Attachment</h3>
+                <div class="endpoint">
+                    <span class="method-delete">DELETE</span> /api/external/attachments/:filename
+                </div>
+                
+                <h4>Contoh</h4>
+                <div class="code-block">
+curl -X DELETE http://192.168.10.20:8000/api/external/attachments/report.pdf \
+  -H "X-API-Key: abc123"
+                </div>
+            </div>
+        </div>
+
+        <!-- Scheduler API -->
+        <div id="scheduler" class="tab-content space-y-4">
+            <div class="card">
+                <h3>⏰ Scheduler Endpoints</h3>
+                
+                <h4>Pause Job</h4>
+                <div class="endpoint">
+                    <span class="method-post">POST</span> /api/external/pause-schedule
+                </div>
+                <div class="code-block">
+{
+  "jobName": "daily_reminder"
+}
+                </div>
+
+                <h4>Resume Job</h4>
+                <div class="endpoint">
+                    <span class="method-post">POST</span> /api/external/resume-schedule
+                </div>
+                <div class="code-block">
+{
+  "jobName": "daily_reminder"
+}
+                </div>
+
+                <h4>Get Schedule Status</h4>
+                <div class="endpoint">
+                    <span class="method-get">GET</span> /api/external/schedules
+                </div>
+                <p>Response akan menampilkan semua scheduled jobs dan status-nya</p>
+            </div>
+        </div>
+
+        <!-- Validator API -->
+        <div id="validator" class="tab-content space-y-4">
+            <div class="card">
+                <h3>✅ Validate Numbers</h3>
+                <div class="endpoint">
+                    <span class="method-post">POST</span> /api/external/validate-numbers
+                </div>
+                
+                <h4>Parameters</h4>
+                <div class="code-block">
+{
+  "numbers": ["62812345678", "6287654321", "62811111111"]
+}
+                </div>
+
+                <h4>Response</h4>
+                <div class="code-block">
+{
+  "success": true,
+  "results": {
+    "active": ["62812345678"],
+    "inactive": ["6287654321"],
+    "invalid": ["62811111111"]
+  },
+  "summary": {
+    "total": 3,
+    "active": 1,
+    "inactive": 1,
+    "invalid": 1
+  }
+}
+                </div>
+
+                <h4>Contoh</h4>
+                <div class="code-block">
+curl -X POST http://192.168.10.20:8000/api/external/validate-numbers \
+  -H "X-API-Key: abc123" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "numbers": ["62812345678", "6287654321"]
+  }'
+                </div>
+            </div>
+        </div>
+
+        <!-- Contoh -->
+        <div id="examples" class="tab-content space-y-4">
+            <div class="card">
+                <h3>💡 Contoh Implementasi</h3>
+                
+                <h4>JavaScript/Node.js</h4>
+                <div class="code-block">
+const axios = require('axios');
+
+const api = axios.create({
+  baseURL: 'http://192.168.10.20:8000',
+  headers: {
+    'X-API-Key': 'YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  }
+});
+
+// Send message
+await api.post('/api/external/send-message', {
+  target: '62812345678@s.whatsapp.net',
+  message: 'Hello from Node.js!'
+});
+
+// Upload file
+const FormData = require('form-data');
+const fs = require('fs');
+
+const form = new FormData();
+form.append('file', fs.createReadStream('file.pdf'));
+await api.post('/api/external/upload-attachment', form, {
+  headers: form.getHeaders()
+});
+                </div>
+
+                <h4>Python</h4>
+                <div class="code-block">
+import requests
+
+api_key = 'YOUR_API_KEY'
+headers = {'X-API-Key': api_key}
+base_url = 'http://192.168.10.20:8000'
+
+# Send message
+response = requests.post(
+  f'{base_url}/api/external/send-message',
+  headers=headers,
+  json={
+    'target': '62812345678@s.whatsapp.net',
+    'message': 'Hello from Python!'
+  }
+)
+
+# Upload file
+with open('file.pdf', 'rb') as f:
+  files = {'file': f}
+  response = requests.post(
+    f'{base_url}/api/external/upload-attachment',
+    headers=headers,
+    files=files
+  )
+                </div>
+
+                <h4>cURL</h4>
+                <div class="code-block">
+# Send message
+curl -X POST http://192.168.10.20:8000/api/external/send-message \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"target":"62812345678@s.whatsapp.net","message":"Hello!"}'
+
+# Upload file
+curl -X POST http://192.168.10.20:8000/api/external/upload-attachment \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -F "file=@document.pdf"
+
+# Send file
+curl -X POST http://192.168.10.20:8000/api/external/send-attachment \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"target":"62812345678@s.whatsapp.net","filename":"document.pdf"}'
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>🔗 Node-RED Integration</h3>
+                <p>Gunakan HTTP Request node untuk integrate dengan Node-RED:</p>
+                <ul>
+                    <li>Method: POST</li>
+                    <li>URL: <code class="bg-gray-200 px-2 py-1 rounded">http://192.168.10.20:8000/api/external/send-message</code></li>
+                    <li>Headers: <code class="bg-gray-200 px-2 py-1 rounded">X-API-Key: YOUR_API_KEY</code></li>
+                    <li>Payload: JSON dengan target dan message</li>
+                </ul>
+                <p class="mt-3 text-sm text-gray-600">Lihat file <strong>NODERED_INTEGRATION.md</strong> di docs folder untuk flow examples lengkap</p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="card mt-8 bg-gradient-to-r from-purple-100 to-blue-100">
+            <h3>📖 Dokumentasi Lengkap</h3>
+            <p>Untuk informasi lebih detail, lihat file dokumentasi di folder <code class="bg-gray-200 px-2 py-1 rounded">/docs</code>:</p>
+            <ul class="mt-3">
+                <li><strong>API_DOCUMENTATION.md</strong> - Referensi API lengkap</li>
+                <li><strong>ATTACHMENT_API.md</strong> - Detail attachment system</li>
+                <li><strong>NODERED_INTEGRATION.md</strong> - Setup Node-RED flows</li>
+                <li><strong>DEPLOYMENT_GUIDE.md</strong> - Panduan deployment production</li>
+                <li><strong>QUICK_REFERENCE.md</strong> - Quick lookup guide</li>
+            </ul>
+        </div>
+    </main>
+
+    <script>
+        function switchTab(tabName) {
+            // Hide all
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('active');
+            });
+
+            // Show selected
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Load highlight.js
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js';
+        script.onload = () => {
+            document.querySelectorAll('.code-block').forEach(block => {
+                hljs.highlightElement(block);
+            });
+        };
+        document.head.appendChild(script);
+    </script>
+</body>
+</html>

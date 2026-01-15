@@ -15,14 +15,6 @@ Berikut adalah daftar perintah yang tersedia:
 - \`/gemini [pertanyaan]\`: Ajukan pertanyaan ke AI.
   Contoh: \`/gemini Apa ibu kota Indonesia?\`
 
-- \`/cuti #[TGL] #NAMA\`: Menambahkan jadwal cuti ke kalender.
-  Format tanggal: \`DD Bulan YYYY\`
-  
-  *Contoh Penggunaan:*
-  - Satu hari: \`/cuti #1 Maret 2025 #Andi\`
-  - Berurutan: \`/cuti #1-3 Maret 2025 #Budi\`
-  - Tdk Berurutan: \`/cuti #5, 10, 15 Maret 2025 #Citra\`
-
 Selamat mencoba!`;
     
     try {

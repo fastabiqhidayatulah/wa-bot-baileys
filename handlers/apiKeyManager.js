@@ -156,12 +156,6 @@ async function validateApiKey(provider, apiKey) {
                     return { valid: false, message: `❌ Error: ${apiError.message}` };
                 }
             }
-        } else if (provider === 'google_calendar') {
-            // Untuk Google Calendar, validasi basic format saja
-            if (apiKey.includes('apps.googleusercontent.com') && apiKey.length > 100) {
-                return { valid: true, message: '✓ Format Google OAuth terlihat valid' };
-            }
-            return { valid: false, message: '❌ Format Google OAuth tidak valid - pastikan ini credentials JSON' };
         } else if (provider === 'custom_api') {
             // Custom API hanya validasi tidak kosong
             if (!apiKey || apiKey.trim().length === 0) {
@@ -182,7 +176,6 @@ async function validateApiKey(provider, apiKey) {
 function getAvailableProviders() {
     return [
         { id: 'gemini', name: 'Google Gemini AI', icon: '🤖', color: 'blue' },
-        { id: 'google_calendar', name: 'Google Calendar OAuth', icon: '📅', color: 'red' },
         { id: 'custom_api', name: 'Custom External API', icon: '🔌', color: 'purple' }
     ];
 }

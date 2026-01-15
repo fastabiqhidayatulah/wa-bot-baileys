@@ -45,7 +45,7 @@
                 <a href="/" class="nav-link">Utama</a>
                 <a href="/scheduler.html" class="nav-link">Scheduler</a>
                 <a href="/validator.html" class="nav-link">Validator</a>
-                <a href="/calendar.html" class="nav-link">Kalender</a>
+                <a href="/docs.html" class="nav-link">📚 Docs</a>
                 <a href="/settings.html" class="nav-link active">Pengaturan</a>
                 <a href="/logout" class="nav-link bg-red-100 text-red-700 hover:bg-red-200">Logout</a>
             </div>
@@ -90,49 +90,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Reminder Settings Section -->
-        <div class="card max-w-4xl mx-auto">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">Pengaturan Reminder & Kalender</h2>
-            
-            <div class="space-y-6">
-                <div>
-                    <h3 class="text-lg font-semibold text-gray-700">Koneksi Google Calendar</h3>
-                    <p class="text-sm text-gray-500 mt-1">Hubungkan bot dengan akun Google untuk membaca dan menulis jadwal di kalender.</p>
-                    <div class="mt-4 flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                        <div id="status-indicator" class="w-4 h-4 rounded-full bg-gray-400 animate-pulse"></div>
-                        <span id="status-text" class="font-medium text-gray-700">Mengecek status...</span>
-                        <a href="/google-auth" id="connect-btn" class="btn btn-primary ml-auto">Hubungkan Akun Google</a>
-                    </div>
-                </div>
-
-                <div class="border-t border-gray-200"></div>
-
-                <form id="reminder-settings-form">
-                    <h3 class="text-lg font-semibold text-gray-700">Pengaturan Reminder Cuti</h3>
-                    <div class="mt-4 space-y-4">
-                        <div>
-                            <label for="reminder-time" class="form-label">Waktu Pengiriman Reminder (Setiap Hari)</label>
-                            <input type="time" id="reminder-time" class="form-input" required>
-                        </div>
-                        <div>
-                            <label for="personal-targets" class="form-label">Target Personal (pisahkan koma)</label>
-                            <input type="text" id="personal-targets" class="form-input" placeholder="0812..., 0813...">
-                        </div>
-                        <div>
-                            <label for="group-targets" class="form-label">Target Grup (tahan Ctrl/Cmd untuk memilih banyak)</label>
-                            <div class="flex items-center space-x-2">
-                                <select id="group-targets" multiple class="form-input h-32"></select>
-                                <button type="button" id="refresh-groups-btn" class="p-3 bg-gray-200 rounded-lg self-start" title="Refresh Daftar Grup">🔄</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="pt-6">
-                         <button type="submit" class="btn btn-primary w-full">Simpan Pengaturan Reminder</button>
-                    </div>
-                </form>
-            </div>
-        </div>
     </main>
 
     <script src="/socket.io/socket.io.js"></script>
@@ -156,7 +113,6 @@
             // Hints untuk setiap provider
             const hints = {
                 gemini: 'Dapatkan API key dari <a href="https://aistudio.google.com/app/apikeys" target="_blank" class="text-blue-600 underline">Google AI Studio</a>',
-                google_calendar: 'Dapatkan dari Google Cloud Console > OAuth 2.0 Client ID (Desktop)',
                 custom_api: 'API key custom untuk integrasi eksternal'
             };
 
@@ -294,17 +250,6 @@
                 validationMessage.classList.remove('hidden');
             };
 
-            // ===== Reminder Settings (existing code) =====
-            const statusIndicator = document.getElementById('status-indicator');
-            const statusText = document.getElementById('status-text');
-            const connectBtn = document.getElementById('connect-btn');
-            const form = document.getElementById('reminder-settings-form');
-            const timeInput = document.getElementById('reminder-time');
-            const personalInput = document.getElementById('personal-targets');
-            const groupSelect = document.getElementById('group-targets');
-            const refreshGroupsBtn = document.getElementById('refresh-groups-btn');
-            const statusMessageEl = document.getElementById('status-message');
-
             const showStatus = (message, isError = false) => {
                 statusMessageEl.textContent = message;
                 statusMessageEl.className = `p-4 mb-4 text-sm rounded-lg max-w-4xl mx-auto ${isError ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`;
@@ -312,103 +257,8 @@
                 setTimeout(() => { statusMessageEl.style.display = 'none'; }, 5000);
             };
 
-            const fetchData = async (url) => {
-                const response = await fetch(url, { credentials: 'include' });
-                if (!response.ok) {
-                    if (response.status === 401) window.location.href = '/login.html';
-                    const errorData = await response.json().catch(() => ({ error: 'Gagal memproses respons server.' }));
-                    throw new Error(errorData.error || 'Gagal mengambil data.');
-                }
-                return response.json();
-            };
-
-            const checkGoogleStatus = async () => {
-                try {
-                    const data = await fetchData('/api/internal/google-status');
-                    statusIndicator.classList.remove('animate-pulse');
-                    if (data.connected) {
-                        statusIndicator.className = 'w-4 h-4 rounded-full bg-green-500';
-                        statusText.textContent = 'Terhubung ke Google Calendar';
-                        connectBtn.textContent = 'Otorisasi Ulang';
-                        connectBtn.classList.remove('btn-primary');
-                        connectBtn.classList.add('btn-success');
-                    } else {
-                        statusIndicator.className = 'w-4 h-4 rounded-full bg-red-500';
-                        statusText.textContent = 'Tidak Terhubung';
-                    }
-                } catch (error) { statusText.textContent = 'Gagal mengecek status.'; }
-            };
-
-            const loadGroups = async () => {
-                groupSelect.innerHTML = '<option disabled>Memuat...</option>';
-                try {
-                    const groups = await fetchData('/api/internal/get-groups');
-                    groupSelect.innerHTML = '';
-                    groups.forEach(g => {
-                        const option = document.createElement('option');
-                        option.value = g.id;
-                        option.textContent = g.subject;
-                        groupSelect.appendChild(option);
-                    });
-                } catch (error) {
-                    groupSelect.innerHTML = '<option disabled>Gagal memuat.</option>';
-                    showStatus(error.message, true);
-                }
-            };
-            
-            const loadReminderSettings = async () => {
-                try {
-                    const settings = await fetchData('/api/internal/get-reminder-settings');
-                    const [minute, hour] = settings.schedule.split(' ');
-                    timeInput.value = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-                    
-                    personalInput.value = (settings.targets.personal || []).join(', ');
-
-                    
-                    const groupIDs = settings.targets.groups || [];
-                    for (const option of groupSelect.options) {
-                        option.selected = groupIDs.includes(option.value);
-                    }
-
-                } catch (error) {
-                    showStatus('Gagal memuat pengaturan reminder.', true);
-                }
-            };
-
-            form.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const [hour, minute] = timeInput.value.split(':');
-                const payload = {
-                    schedule: `${minute} ${hour} * * *`,
-                    targets: {
-                        personal: personalInput.value.split(',').map(n => n.trim()).filter(n => n),
-                        groups: [...groupSelect.selectedOptions].map(opt => opt.value)
-                    }
-                };
-
-                try {
-                    const response = await fetch('/api/internal/save-reminder-settings', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload),
-                        credentials: 'include'
-                    });
-                    const result = await response.json();
-                    if (!response.ok) throw new Error(result.error);
-                    showStatus(result.message, false);
-                } catch (error) {
-                    showStatus(error.message, true);
-                }
-            });
-
-            refreshGroupsBtn.addEventListener('click', loadGroups);
-
-            // Inisialisasi semua
+            // Inisialisasi
             loadApiKeys();
-            checkGoogleStatus();
-            loadGroups().then(() => {
-                loadReminderSettings();
-            });
         });
     </script>
 </body>

@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "id": "54ce4832-d244-47f8-b266-3dc1bb01cdd6",
+    "targets": [],
+    "groups": [
+      "120363248790828661@g.us"
+    ],
+    "message": "📌 REMINDER MEETING TEKNIK\n🔧 Jangan lupa hadir ya!\n\n🗓️ Tanggal: 15 Januari 2026\n🕒 Jam: 13:00 WIB\n📍 Tempat: Ruang Kerja Manager Teknik\n📑 Agenda: Pembahasan Rencana Kerja\n\n⚙️ Harap datang tepat waktu dan siapkan catatan penting ya.🙏\n\n📶 Meeting ini penting untuk keberlangsungan teknis proyek kita.\n🔥 Ayo saling support demi hasil terbaik!",
+    "templateName": null,
+    "scheduleType": "once",
+    "scheduleData": {
+      "time": "13:00",
+      "date": "2026-01-15"
+    },
+    "status": "Active",
+    "lastRun": null
+  }
+]

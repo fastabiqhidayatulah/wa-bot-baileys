@@ -12,15 +12,13 @@ const { v4: uuidv4 } = require('uuid');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
 const { exec } = require('child_process');
-const { google } = require('googleapis');
 require('dotenv').config();
 
 // Handlers
 const helpHandler = require('./handlers/helpHandler');
 const geminiHandler = require('./handlers/geminiHandler');
-const leaveReminderHandler = require('./handlers/leaveReminderHandler');
-const cutiHandler = require('./handlers/cutiHandler');
-const apiKeyManager = require('./handlers/apiKeyManager'); 
+const apiKeyManager = require('./handlers/apiKeyManager');
+const attachmentHandler = require('./handlers/attachmentHandler'); 
 
 
 // =================================================================
@@ -75,10 +73,44 @@ async function startBot() {
     const writeJSON = (filePath, data) => { try { fs.writeFileSync(filePath, JSON.stringify(data, null, 2)); } catch (error) { log(`Error menulis file JSON ${filePath}: ${error}`, 'error'); } };
 
     // =================================================================
+    //                    NTP TIME SYNCHRONIZATION (JAKARTA)
+    // =================================================================
+    let timeOffset = 0; // Offset dari waktu online
+    let lastSyncTime = new Date(); // Track waktu sync terakhir
+    
+    const syncTimeWithNTP = async () => {
+        try {
+            const response = await fetch('https://worldtimeapi.org/api/timezone/Asia/Jakarta');
+            const data = await response.json();
+            const serverTime = new Date(data.datetime).getTime();
+            const localTime = Date.now();
+            timeOffset = serverTime - localTime;
+            lastSyncTime = new Date(); // Update waktu sync
+            
+            const offsetSeconds = Math.round(timeOffset / 1000);
+            if (Math.abs(offsetSeconds) > 0) {
+                log(`🔄 NTP Sync: Waktu server offline ${offsetSeconds > 0 ? '+' : ''}${offsetSeconds}s dari online`, 'info');
+            } else {
+                log(`✓ NTP Sync OK: Waktu sudah sinkron dengan server online`, 'info');
+            }
+            return true;
+        } catch (e) {
+            log(`⚠️ NTP Sync gagal: ${e.message}. Menggunakan jam sistem.`, 'warn');
+            return false;
+        }
+    };
+
+    // Dapatkan waktu yang sudah dikalibrasi
+    const getNTPTime = () => Date.now() + timeOffset;
+
+    // =================================================================
     //                    MIDDLEWARE & KONFIGURASI EXPRESS
     // =================================================================
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
+    // File upload middleware dengan batas ukuran 50MB
+    const fileUpload = require('express-fileupload');
+    app.use(fileUpload({ limits: { fileSize: 50 * 1024 * 1024 } }));
     app.use(session({ secret: process.env.SESSION_SECRET || 'secret-key-default', resave: false, saveUninitialized: true, cookie: { secure: process.env.NODE_ENV === 'production' }}));
     const checkPageAuth = (req, res, next) => { if (req.session.userId) { next(); } else { res.redirect('/login.html'); } };
     const checkApiAuth = (req, res, next) => { if (req.session.userId) { next(); } else { res.status(401).json({ error: 'Sesi tidak valid atau telah berakhir. Silakan login kembali.' }); } };
@@ -88,7 +120,7 @@ async function startBot() {
     app.get('/index.html', checkPageAuth);
     app.get('/scheduler.html', checkPageAuth);
     app.get('/validator.html', checkPageAuth);
-    app.get('/calendar.html', checkPageAuth);
+    app.get('/docs.html', checkPageAuth);
     app.get('/settings.html', checkPageAuth);
     app.use('/api/internal', checkApiAuth);
 
@@ -144,7 +176,6 @@ async function startBot() {
                 log(connectionStatus);
                 io.emit('status', { status: connectionStatus, qr: qrCode });
                 loadScheduledJobs();
-                setupLeaveReminder();
             }
         });
 
@@ -160,8 +191,6 @@ async function startBot() {
                 await helpHandler(sock, from);
             } else if (messageText.startsWith('/gemini')) {
                 await geminiHandler(sock, from, messageText.substring(7).trim());
-            } else if (messageText.startsWith('/cuti')) { 
-                await cutiHandler(sock, from, messageText);
             }
         });
     }
@@ -585,114 +614,120 @@ async function startBot() {
 
 
     // =================================================================
-    //                 API GOOGLE CALENDAR
+    //                    API ATTACHMENT MANAGEMENT
     // =================================================================
-    app.get('/google-auth', (req, res) => {
-        const oAuth2Client = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_REDIRECT_URI);
-        const authUrl = oAuth2Client.generateAuthUrl({ access_type: 'offline', prompt: 'consent', scope: ['https://www.googleapis.com/auth/calendar'] });
-        res.redirect(authUrl);
-    });
-    app.get('/oauth2callback', async (req, res) => {
-        const { code } = req.query;
+    /**
+     * POST /api/external/upload-attachment
+     * Upload file attachment (dari Node-RED / external)
+     * Body: multipart/form-data dengan field 'file'
+     */
+    app.post('/api/external/upload-attachment', checkApiKey, (req, res) => {
         try {
-            const oAuth2Client = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_REDIRECT_URI);
-            const { tokens } = await oAuth2Client.getToken(code);
-            await leaveReminderHandler.saveToken(tokens);
-            res.redirect('/calendar.html');
-        } catch (e) { res.status(500).send('Gagal mendapatkan token akses.'); }
+            if (!req.files || Object.keys(req.files).length === 0) {
+                return res.status(400).json({ error: 'Tidak ada file yang di-upload' });
+            }
+
+            const uploadedFile = req.files.file;
+            const result = attachmentHandler.saveAttachment(uploadedFile.name, uploadedFile.data);
+
+            if (result.success) {
+                log(`File attachment berhasil disimpan: ${result.filename} (${result.size} bytes)`);
+                res.status(201).json(result);
+            } else {
+                res.status(400).json(result);
+            }
+        } catch (e) {
+            log(`Error upload attachment: ${e.message}`, 'error');
+            res.status(500).json({ error: `Gagal upload attachment: ${e.message}` });
+        }
     });
-    app.get('/api/internal/google-status', async (req, res) => {
-        const token = await leaveReminderHandler.loadToken();
-        res.json({ connected: !!token });
-    });
-    app.get('/api/internal/get-calendar-events', async (req, res) => {
+
+    /**
+     * GET /api/external/attachments
+     * Daftar semua attachment yang tersedia
+     */
+    app.get('/api/external/attachments', checkApiKey, (req, res) => {
         try {
-            const oAuth2Client = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_REDIRECT_URI);
-            const auth = await leaveReminderHandler.getAuthenticatedClient(oAuth2Client);
-            const calendar = google.calendar({ version: 'v3', auth });
-            const result = await calendar.events.list({
-                calendarId: process.env.LEAVE_CALENDAR_ID,
-                timeMin: req.query.start,
-                timeMax: req.query.end,
-                singleEvents: true,
-                orderBy: 'startTime',
+            const files = attachmentHandler.listAttachments();
+            res.json({
+                success: true,
+                count: files.length,
+                files: files
             });
-            const events = result.data.items.map(event => ({
-                title: event.summary,
-                start: event.start.dateTime || event.start.date,
-                end: event.end.dateTime || event.end.date,
-                allDay: !!event.start.date,
-            }));
-            res.json(events);
-        } catch (e) { res.status(500).json({ error: 'Gagal mengambil event. Pastikan sudah terotorisasi.' }); }
+        } catch (e) {
+            log(`Error listing attachments: ${e.message}`, 'error');
+            res.status(500).json({ error: `Gagal mengambil daftar attachment: ${e.message}` });
+        }
     });
-    app.post('/api/internal/create-calendar-event', async (req, res) => {
+
+    /**
+     * POST /api/external/send-attachment
+     * Kirim file attachment ke WhatsApp
+     * Body: { target, filename, caption (optional) }
+     */
+    app.post('/api/external/send-attachment', checkApiKey, async (req, res) => {
+        const { target, filename, caption } = req.body;
+
+        if (!target || !filename) {
+            return res.status(400).json({ error: 'Field "target" dan "filename" wajib diisi' });
+        }
+
+        if (!sock || !sock.user) {
+            return res.status(503).json({ error: 'Service Unavailable: Bot belum terhubung.' });
+        }
+
         try {
-            const oAuth2Client = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_REDIRECT_URI);
-            const auth = await leaveReminderHandler.getAuthenticatedClient(oAuth2Client);
-            const newEvent = await leaveReminderHandler.createEvent(auth, req.body);
-            res.status(201).json(newEvent);
-        } catch (e) { res.status(500).json({ error: 'Gagal membuat event.' }); }
-    });
+            let targetJid = target;
 
-    // =================================================================
-    //                 API PENGATURAN REMINDER
-    // =================================================================
-    app.get('/api/internal/get-reminder-settings', (req, res) => {
-        const settings = readJSON(path.join(__dirname, 'reminder_settings.json')) || { schedule: '0 7 * * *', targets: { personal: [], groups: [] } };
-        res.json(settings);
-    });
-    app.post('/api/internal/save-reminder-settings', (req, res) => {
-        const { schedule, targets } = req.body;
-        if (!schedule || !targets) return res.status(400).json({ error: 'Data tidak lengkap.' });
-        if (!cron.validate(schedule)) return res.status(400).json({ error: 'Format jadwal (cron) tidak valid.' });
-        writeJSON(path.join(__dirname, 'reminder_settings.json'), { schedule, targets });
-        log('Pengaturan reminder berhasil disimpan. Menjadwalkan ulang...');
-        setupLeaveReminder();
-        res.json({ success: true, message: 'Pengaturan reminder berhasil disimpan.' });
-    });
-
-    // =================================================================
-    //            SISTEM PENGINGAT CUTI (GOOGLE CALENDAR)
-    // =================================================================
-    function setupLeaveReminder() {
-        if (reminderCronJob) {
-            reminderCronJob.stop();
-            log('Menghentikan jadwal reminder lama.');
-        }
-        const settings = readJSON(path.join(__dirname, 'reminder_settings.json'));
-        if (!settings || !settings.schedule) {
-            log('Pengaturan reminder tidak ditemukan. Fitur dinonaktifkan.', 'warn');
-            return;
-        }
-        const { schedule, targets } = settings;
-        if (!cron.validate(schedule)) {
-            log(`Jadwal reminder "${schedule}" tidak valid. Fitur dinonaktifkan.`, 'error');
-            return;
-        }
-        log(`Pengingat cuti dijadwalkan dengan pola: "${schedule}"`);
-        reminderCronJob = cron.schedule(schedule, async () => {
-            log('Menjalankan tugas pengingat cuti...');
-            try {
-                const allTargets = [...(targets.personal || []), ...(targets.groups || [])];
-                if (allTargets.length === 0) {
-                    log('Tidak ada target untuk reminder cuti. Tugas dilewati.', 'warn');
-                    return;
+            // Validasi nomor WA
+            if (!target.includes('@')) {
+                let number = target.trim();
+                if (number.startsWith('0')) {
+                    number = '62' + number.substring(1);
                 }
-                const oAuth2Client = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, process.env.GOOGLE_REDIRECT_URI);
-                const auth = await leaveReminderHandler.getAuthenticatedClient(oAuth2Client);
-                const leaveData = await leaveReminderHandler.getLeaveData(auth);
-                const message = leaveReminderHandler.formatLeaveMessage(leaveData);
+                targetJid = `${number}@s.whatsapp.net`;
 
-                if (message) { 
-                    await sendBroadcastWithDelay(allTargets, message, "Reminder Cuti");
-                    log(`Proses pengiriman reminder cuti ke ${allTargets.length} target telah dimulai.`);
-                } else {
-                    log('Tidak ada yang cuti hari ini. Reminder tidak dikirim.');
+                // Cek apakah nomor aktif
+                const [checkResult] = await sock.onWhatsApp(targetJid);
+                if (!checkResult || !checkResult.exists) {
+                    return res.status(404).json({ error: `Nomor ${target} tidak terdaftar di WhatsApp` });
                 }
-            } catch (e) { log(`Gagal menjalankan tugas pengingat cuti: ${e.message}`, 'error'); }
-        }, { scheduled: true, timezone: "Asia/Jakarta" });
-    }
+            }
+
+            const result = await attachmentHandler.sendFileToWhatsApp(sock, targetJid, filename, caption);
+
+            if (result.success) {
+                log(`Attachment ${filename} berhasil dikirim ke ${target}`);
+                res.json(result);
+            } else {
+                res.status(400).json(result);
+            }
+        } catch (e) {
+            log(`Gagal mengirim attachment: ${e.message}`, 'error');
+            res.status(500).json({ error: `Gagal mengirim attachment: ${e.message}` });
+        }
+    });
+
+    /**
+     * DELETE /api/external/attachments/:filename
+     * Hapus file attachment
+     */
+    app.delete('/api/external/attachments/:filename', checkApiKey, (req, res) => {
+        try {
+            const { filename } = req.params;
+            const result = attachmentHandler.deleteAttachment(filename);
+
+            if (result.success) {
+                log(`Attachment ${filename} berhasil dihapus`);
+                res.json(result);
+            } else {
+                res.status(400).json(result);
+            }
+        } catch (e) {
+            log(`Error delete attachment: ${e.message}`, 'error');
+            res.status(500).json({ error: `Gagal menghapus attachment: ${e.message}` });
+        }
+    });
 
     // =================================================================
     //                         API EKSTERNAL
@@ -867,11 +902,37 @@ async function startBot() {
         }
     });
 
+    /**
+     * GET /api/internal/time-status
+     * Dapatkan informasi waktu sistem, NTP, dan offset
+     */
+    app.get('/api/internal/time-status', checkApiAuth, (req, res) => {
+        const systemTime = new Date();
+        const ntpTime = new Date(Date.now() + timeOffset);
+        
+        res.json({
+            systemTime: systemTime.toISOString(),
+            ntpTime: ntpTime.toISOString(),
+            timeOffset: timeOffset,
+            offsetSeconds: Math.round(timeOffset / 1000),
+            lastSyncTime: lastSyncTime.toISOString(),
+            timezone: 'Asia/Jakarta'
+        });
+    });
+
     // =================================================================
     //                         JALANKAN SERVER
     // =================================================================
-    server.listen(PORT, () => {
+    server.listen(PORT, async () => {
         log(`Server berjalan di http://localhost:${PORT}`);
+        
+        // Sync waktu dengan NTP sebelum connect WhatsApp
+        log(`[System] Menyinkronkan jam dengan server NTP (Asia/Jakarta)...`);
+        await syncTimeWithNTP();
+        
+        // Setup re-sync setiap 1 jam
+        setInterval(syncTimeWithNTP, 60 * 60 * 1000);
+        
         connectToWhatsApp().catch(err => log(`Gagal memulai koneksi WhatsApp: ${err}`, 'error'));
     });
     process.on('SIGINT', async () => {
